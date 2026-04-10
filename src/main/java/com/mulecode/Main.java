@@ -1,10 +1,9 @@
 package com.mulecode;
 
-import com.mulecode.dao.NoteDaoImpl;
-import com.mulecode.dao.UserDaoImpl;
+import com.mulecode.auth.AuthService;
 import com.mulecode.db.DatabaseConnection;
 import com.mulecode.model.Note;
-import com.mulecode.model.User;
+import com.mulecode.service.NoteService;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -14,38 +13,52 @@ public class Main {
         try {
             DatabaseConnection.getConnection();
 
-            UserDaoImpl userDao = new UserDaoImpl();
-            NoteDaoImpl noteDao = new NoteDaoImpl();
+            AuthService authService = new AuthService();
+            NoteService noteService = new NoteService(authService);
 
-            // Test: Create a user
-            User user = new User("mule2020", "mulgashaw12@gmail.com", "hashedpassword123");
-            userDao.save(user);
-            System.out.println("Created: " + user);
+            // Test: Register a new user
+            System.out.println("\n--- REGISTER ---");
+            authService.register("mule2020", "mulgashaw12@gmail.com", "mypassword123");
 
-            // Test: Find the user
-            userDao.findById(user.getId()).ifPresent(u ->
-                    System.out.println("Found user: " + u));
+            // Test: Try registering same username again
+            authService.register("mule2020", "other@gmail.com", "anotherpassword");
 
-            // Test: Create a note
-            Note note = new Note("My First Note", "This is the content of my first note.", user.getId());
-            noteDao.save(note);
-            System.out.println("Created: " + note);
+            // Test: Login with wrong password
+            System.out.println("\n--- LOGIN ---");
+            authService.login("mule2020", "wrongpassword");
 
-            // Test: Find all notes for this user
-            List<Note> notes = noteDao.findByUserId(user.getId());
-            System.out.println("Notes for user: " + notes.size());
+            // Test: Login with correct password
+            authService.login("mule2020", "mypassword123");
 
-            // Test: Update the note
-            note.setTitle("My Updated Note");
-            noteDao.update(note);
+            // Test: Create notes
+            System.out.println("\n--- CREATE NOTES ---");
+            noteService.createNote("My First Note", "This is my first note content.");
+            noteService.createNote("My Second Note", "This is my second note content.");
 
-            // Test: Delete the note
-            noteDao.delete(note.getId());
-            System.out.println("Note deleted successfully");
+            // Test: View all my notes
+            System.out.println("\n--- MY NOTES ---");
+            List<Note> notes = noteService.getMyNotes();
+            notes.forEach(n -> System.out.println(n));
 
-            // Test: Delete the user
-            userDao.delete(user.getId());
-            System.out.println("User deleted successfully");
+            // Test: Update a note
+            System.out.println("\n--- UPDATE NOTE ---");
+            noteService.updateNote(notes.get(0).getId(), "Updated Title", "Updated content.");
+
+            // Test: Delete a note
+            System.out.println("\n--- DELETE NOTE ---");
+            noteService.deleteNote(notes.get(1).getId());
+
+            // Test: View notes after delete
+            System.out.println("\n--- MY NOTES AFTER DELETE ---");
+            noteService.getMyNotes().forEach(n -> System.out.println(n));
+
+            // Test: Logout
+            System.out.println("\n--- LOGOUT ---");
+            authService.logout();
+
+            // Test: Try creating note after logout
+            System.out.println("\n--- TRY CREATE NOTE AFTER LOGOUT ---");
+            noteService.createNote("Should Fail", "This should not be created.");
 
             DatabaseConnection.closeConnection();
 
